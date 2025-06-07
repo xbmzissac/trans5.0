@@ -648,12 +648,22 @@
 
             async translateText(text, engine) {
                 // 首先尝试使用Excel对照表进行替换翻译
-                let translatedText = this.applyDictionaryTranslation(text);
-                
-                // 如果有显著改变，说明字典翻译有效，可以直接返回
-                if (translatedText !== text) {
-                    return translatedText;
-                }
+                async translateText(text, engine) {
+    	// 使用API翻译
+   	let translatedText;
+    	if (engine === 'claude') {
+        	    translatedText = await this.translateWithClaude(text);
+    } else {
+        	    translatedText = await this.translateWithGPT(text);
+    }
+    
+    	// 然后在API翻译结果基础上应用Excel对照表进行后处理
+    	if (Object.keys(this.translationDict).length > 0) {
+        	     translatedText = this.applyDictionaryTranslation(translatedText);
+    }
+    
+    return translatedText;
+}
 
                 // 否则使用API翻译
                 if (engine === 'claude') {
