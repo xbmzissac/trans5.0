@@ -653,17 +653,17 @@
    	let translatedText;
     	if (engine === 'claude') {
         	    translatedText = await this.translateWithClaude(text);
-    } else {
+   	 } else {
         	    translatedText = await this.translateWithGPT(text);
-    }
+   	 }
     
     	// 然后在API翻译结果基础上应用Excel对照表进行后处理
     	if (Object.keys(this.translationDict).length > 0) {
         	     translatedText = this.applyDictionaryTranslation(translatedText);
-    }
+   	 }
     
-    return translatedText;
-}
+    	return translatedText;
+	}
 
                 // 否则使用API翻译
                 if (engine === 'claude') {
