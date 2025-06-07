@@ -757,7 +757,7 @@
 
                 const prompt = this.buildTranslationPrompt(text);
 
-                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                const response = await fetch('https://cors-anywhere.herokuapp.com/https://api.anthropic.com/v1/messages', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -789,7 +789,7 @@
 
                 const prompt = this.buildTranslationPrompt(text);
 
-                const response = await fetch(`${baseUrl}/chat/completions`, {
+                const response = await fetch(`https://cors-anywhere.herokuapp.com/${baseUrl}/chat/completions`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
