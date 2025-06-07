@@ -626,30 +626,55 @@
 
                 this.showProgress(true);
                 this.results = [];
-                
-                for (let i = 0; i < this.txtFiles.length; i++) {
-                    const file = this.txtFiles[i];
-                    this.updateProgress((i / this.txtFiles.length) * 100, `正在翻译: ${file.name}`);
-                    
-                    try {
-                        const content = await this.readTextFile(file);
-                        const translatedContent = await this.translateText(content, engine);
-                        
-                        this.results.push({
-                            filename: file.name,
-                            original: content,
-                            translated: translatedContent
-                        });
-                        
-                        this.showStatus(`✅ ${file.name} 翻译完成`, 'success');
-                    } catch (error) {
-                        this.showStatus(`❌ ${file.name} 翻译失败: ${error.message}`, 'error');
-                        this.results.push({
-                            filename: file.name,
-                            original: await this.readTextFile(file),
-                            translated: '翻译失败: ' + error.message
-                        });
-                    }
+    
+	for (let i = 0; i < this.txtFiles.length; i++) {
+	    const file = this.txtFiles[i];
+	    this.updateProgress((i / this.txtFiles.length) * 100, `正在翻译: ${file.name}`);
+        
+	    try {
+	            const content = await this.readTextFile(file);
+	            const translationResult = await this.translateText(content, engine);
+            
+	            if (engine === 'both') {
+	                // 双引擎模式，分别存储结果
+	                this.results.push({
+	                    filename: file.name,
+	                    original: content,
+	                    claude: translationResult.claude,
+	                    gpt: translationResult.gpt,
+	                    isDualEngine: true
+	                });
+ 	           } else {
+	                // 单引擎模式
+ 	               this.results.push({
+	                    filename: file.name,
+	                    original: content,
+	                    translated: translationResult,
+	                    isDualEngine: false
+	                });
+	            }
+            
+	            this.showStatus(`✅ ${file.name} 翻译完成`, 'success');
+	        } catch (error) {
+	            this.showStatus(`❌ ${file.name} 翻译失败: ${error.message}`, 'error');
+            
+	            if (engine === 'both') {
+	                this.results.push({
+	                    filename: file.name,
+ 	                    original: await this.readTextFile(file),
+	                    claude: '翻译失败: ' + error.message,
+	                    gpt: '翻译失败: ' + error.message,
+	                    isDualEngine: true
+	                });
+	            } else {
+	                this.results.push({
+	                    filename: file.name,
+	                    original: await this.readTextFile(file),
+	                    translated: '翻译失败: ' + error.message,
+	                    isDualEngine: false
+	                });
+	            }
+	        }                
                 }
 
                 this.updateProgress(100, '翻译完成！');
@@ -658,56 +683,53 @@
             }
 
             async translateText(text, engine) {
-	let translatedText;
-    
-    	// 根据引擎选择进行翻译
-    	if (engine === 'claude') {
-	        translatedText = await this.translateWithClaude(text);
+	if (engine === 'claude') {
+    	        let translatedText = await this.translateWithClaude(text);
+    	        if (Object.keys(this.translationDict).length > 0) {
+    	                translatedText = this.applyDictionaryTranslation(translatedText);
+	        }
+	        return translatedText;
 	} else if (engine === 'gpt') {
-	        translatedText = await this.translateWithGPT(text);
+	        let translatedText = await this.translateWithGPT(text);
+	        if (Object.keys(this.translationDict).length > 0) {
+	                translatedText = this.applyDictionaryTranslation(translatedText);
+	        }
+	        return translatedText;
 	} else if (engine === 'both') {
         	// 双API同时翻译
 	        const [claudeResult, gptResult] = await Promise.allSettled([
 	            this.translateWithClaude(text),
 	            this.translateWithGPT(text)
 	        ]);
-	        const result = {
-	            filename: file.name,
-	            claude: claudeResult.status === 'fulfilled' ? claudeResult.value : 'Claude翻译失败: ' + claudeResult.reason.message,
-	            gpt: gptResult.status === 'fulfilled' ? gptResult.value : 'GPT翻译失败: ' + gptResult.reason.message
-	        };
-	        this.results.push(result);
-	    }        
 
-
-	        // 处理翻译结果
 	        let claudeTranslation = '';
 	        let gptTranslation = '';
-        
+
 	        if (claudeResult.status === 'fulfilled') {
 	            claudeTranslation = claudeResult.value;
+	            if (Object.keys(this.translationDict).length > 0) {
+	                claudeTranslation = this.applyDictionaryTranslation(claudeTranslation);
+	            }            
 	        } else {
-	            claudeTranslation = `Claude翻译失败: ${claudeResult.reason.message}`;
+	            claudeTranslation = `翻译失败: ${claudeResult.reason.message}`;
 	        }
-        
+
 	        if (gptResult.status === 'fulfilled') {
 	            gptTranslation = gptResult.value;
+	            if (Object.keys(this.translationDict).length > 0) {
+	                gptTranslation = this.applyDictionaryTranslation(gptTranslation);
+	            }
 	        } else {
-	            gptTranslation = `GPT翻译失败: ${gptResult.reason.message}`;
-	        }
-        
-	        // 合并两个翻译结果
-	        translatedText = `=== Claude翻译 ===\n${claudeTranslation}\n\n=== GPT翻译 ===\n${gptTranslation}`;
+	            gptTranslation = `翻译失败: ${gptResult.reason.message}`;
+	        }    
+
+	        return {
+	            claude: claudeTranslation,
+	            gpt: gptTranslation
+	        };
 	    } else {
 	        throw new Error('未知的翻译引擎');
 	    }
-    
-	    // 然后在API翻译结果基础上应用Excel对照表进行后处理
-	    if (Object.keys(this.translationDict).length > 0) {
-	        translatedText = this.applyDictionaryTranslation(translatedText);
-	    }
-    
-	    return translatedText;
             }
 
             applyDictionaryTranslation(text) {
@@ -830,30 +852,82 @@
             }
 
             displayResults() {
-                const resultsSection = document.getElementById('resultsSection');
-                const resultsContainer = document.getElementById('translationResults');
-                
-                resultsSection.style.display = 'block';
-                resultsContainer.innerHTML = '';
+	const resultsSection = document.getElementById('resultsSection');
+	const resultsContainer = document.getElementById('translationResults');
+    
+    	resultsSection.style.display = 'block';
+    	resultsContainer.innerHTML = '';
 
-                this.results.forEach((result, index) => {
-                    const resultDiv = document.createElement('div');
-                    resultDiv.className = 'file-result';
-                    resultDiv.innerHTML = `
-                        <h3>${result.filename}</h3>
-                        <div class="translation-content">
-                            <div class="content-block" style="direction: rtl;">
-		<h4>Claude 翻译</h4>
-		<div class="content-text">${this.escapeHtml(result.claude || '')}</div>
-                            </div>
-                            <div class="content-block" style="direction: rtl;">
-                                <h4>GPT 翻译</h4>
-                                <div class="content-text">${this.escapeHtml(result.gpt || '')}</div>
-                            </div>
-                        </div>
-                    `;
-                    resultsContainer.appendChild(resultDiv);
-                });
+    	this.results.forEach((result, index) => {
+	        const resultDiv = document.createElement('div');
+	        resultDiv.className = 'file-result';
+        
+	        if (result.isDualEngine) {
+	            // 双引擎显示
+	            const claudeLength = result.claude ? result.claude.length : 0;
+	            const gptLength = result.gpt ? result.gpt.length : 0;
+            
+	            resultDiv.innerHTML = `
+	                <h3>
+	                    <span>${result.filename}</span>
+	                    <div style="display: flex; gap: 10px; align-items: center;">
+	                        <small style="color: #666; font-weight: normal;">
+	                            原文: ${result.original.length}字
+	                        </small>
+	                        <button class="copy-btn" onclick="translator.copyClaudeResult(${index})" title="复制Claude译文">
+	                            📋 复制Claude
+	                        </button>
+	                        <button class="copy-btn" onclick="translator.copyGptResult(${index})" title="复制GPT译文">
+	                            📋 复制GPT
+	                        </button>
+	                    </div>
+	                </h3>
+	                <div class="translation-content">
+	                    <div class="content-block">
+	                        <h4>原文 (${result.original.length} 字符)</h4>
+	                        <div class="content-text" tabindex="0">${this.escapeHtml(result.original)}</div>
+	                    </div>
+	                    <div class="content-block" style="direction: rtl;">
+	                        <h4>Claude 翻译 (${claudeLength} 字符)</h4>
+	                        <div class="content-text" tabindex="0">${this.escapeHtml(result.claude || '')}</div>
+	                    </div>
+	                    <div class="content-block" style="direction: rtl;">
+	                        <h4>GPT 翻译 (${gptLength} 字符)</h4>
+	                        <div class="content-text" tabindex="0">${this.escapeHtml(result.gpt || '')}</div>
+	                    </div>
+	                </div>
+	            `;
+	        } else {
+	            // 单引擎显示
+	            const translatedLength = result.translated ? result.translated.length : 0;
+            
+	            resultDiv.innerHTML = `
+	                <h3>
+	                    <span>${result.filename}</span>
+	                    <div style="display: flex; gap: 10px; align-items: center;">
+	                        <small style="color: #666; font-weight: normal;">
+	                            原文: ${result.original.length}字 → 译文: ${translatedLength}字
+	                        </small>
+	                        <button class="copy-btn" onclick="translator.copyToClipboard(${index})">
+	                            📋 复制译文
+	                        </button>
+	                    </div>
+	                </h3>
+	                <div class="translation-content">
+	                    <div class="content-block">
+	                        <h4>原文 (${result.original.length} 字符)</h4>
+	                        <div class="content-text" tabindex="0">${this.escapeHtml(result.original)}</div>
+	                    </div>
+	                    <div class="content-block" style="direction: rtl;">
+	                        <h4>译文 (${translatedLength} 字符)</h4>
+	                        <div class="content-text" tabindex="0">${this.escapeHtml(result.translated || '')}</div>
+	                    </div>
+	                </div>
+	            `;
+	        }
+        
+	        resultsContainer.appendChild(resultDiv);
+	    });
             }
 
             async copyToClipboard(index) {
@@ -873,41 +947,99 @@
                 }
             }
 
+            async copyClaudeResult(index) {
+	const result = this.results[index];
+	if (result.claude) {
+	   try {
+	        await navigator.clipboard.writeText(result.claude);
+	        this.showStatus(已复制 ${result.filename} 的Claude译文, 'success');
+	    } catch (error) {
+	        this.fallbackCopy(result.claude);
+	        this.showStatus(已复制 ${result.filename} 的Claude译文, 'success');
+	    }
+	}
+            }
+            async copyGptResult(index) {
+	const result = this.results[index];
+	if (result.gpt) {
+	    try {
+	        await navigator.clipboard.writeText(result.gpt);
+	        this.showStatus(已复制 ${result.filename} 的GPT译文, 'success');
+	    } catch (error) {
+	        this.fallbackCopy(result.gpt);
+	        this.showStatus(已复制 ${result.filename} 的GPT译文, 'success');
+	    }
+	}
+            }
+            fallbackCopy(text) {
+	const textArea = document.createElement('textarea');
+	textArea.value = text;
+	document.body.appendChild(textArea);
+	textArea.select();
+	document.execCommand('copy');
+	document.body.removeChild(textArea);
+            }
+
             async downloadResults() {
                 if (this.results.length === 0) {
                     this.showStatus('没有翻译结果可下载', 'error');
                     return;
                 }
 
-                const zip = new JSZip();
-                const claudeZip = new JSZip();
-                const gptZip = new JSZip();
-                this.results.forEach(result => {
-                  const base = result.filename.replace(/\.txt$/, '');
-                  if (result.claude) claudeZip.file(base + '_claude.txt', result.claude);
-                  if (result.gpt) gptZip.file(base + '_gpt.txt', result.gpt);
-                });
+	 // 检查是否有双引擎结果
+	const hasDualEngine = this.results.some(result => result.isDualEngine);
 
-                const zip1 = await claudeZip.generateAsync({ type: 'blob' });
-                downloadZip(zip1, 'Claude_Results.zip');
-                const zip2 = await gptZip.generateAsync({ type: 'blob' });
-                downloadZip(zip2, 'GPT_Results.zip');
+	if (hasDualEngine) {
+	        // 分别创建Claude和GPT的压缩包
+	        const claudeZip = new JSZip();
+	        const gptZip = new JSZip();
 
-                this.results.forEach(result => {
-                    const filename = result.filename.replace('.txt', '_translated.txt');
-                    zip.file(filename, result.translated);
-                });
+	        this.results.forEach(result => {
+	            if (result.isDualEngine) {
+	                const baseFilename = result.filename.replace(/\.txt$/, '');
+	                if (result.claude) {
+	                    claudeZip.file(baseFilename + '_claude.txt', result.claude);
+	                }
+	                if (result.gpt) {
+	                    gptZip.file(baseFilename + '_gpt.txt', result.gpt);
+	                }
+	            } else {
+	                // 单引擎结果也放到对应的包里
+	                const baseFilename = result.filename.replace(/\.txt$/, '');
+	                claudeZip.file(baseFilename + '_translated.txt', result.translated);
+	            }
+	        });
+	        // 下载Claude结果
+	        const claudeContent = await claudeZip.generateAsync({ type: 'blob' });
+	        this.downloadZip(claudeContent, Claude_Results_${new Date().toISOString().slice(0, 10)}.zip);
 
-                const content = await zip.generateAsync({ type: 'blob' });
-const url = URL.createObjectURL(content);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `translation_results_${new Date().toISOString().slice(0, 10)}.zip`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
+	        // 下载GPT结果
+	        const gptContent = await gptZip.generateAsync({ type: 'blob' });
+	        this.downloadZip(gptContent, GPT_Results_${new Date().toISOString().slice(0, 10)}.zip);
+
+	        this.showStatus('Claude和GPT结果已分别下载', 'success');
+	    } else {
+	        // 单引擎模式，正常下载
+	        const zip = new JSZip();
+	        this.results.forEach(result => {
+	            const filename = result.filename.replace('.txt', '_translated.txt');
+	            zip.file(filename, result.translated);
+	        });
+	        const content = await zip.generateAsync({ type: 'blob' });
+	        this.downloadZip(content, translation_results_${new Date().toISOString().slice(0, 10)}.zip);
+	        this.showStatus('翻译结果下载完成', 'success');
+	    }
+	}
+	downloadZip(content, filename) {
+	    const url = URL.createObjectURL(content);
+	    const a = document.createElement('a');
+	    a.href = url;
+	    a.download = filename;
+	    document.body.appendChild(a);
+	    a.click();
+	    document.body.removeChild(a);
+	    URL.revokeObjectURL(url);
+	}
                 this.showStatus('ZIP文件下载已开始', 'success');
             }
         }
