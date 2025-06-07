@@ -483,7 +483,11 @@
             }
 
             handleTxtFiles(files) {
-                this.txtFiles = Array.from(files).filter(file => file.type === 'text/plain' || file.name.endsWith('.txt'));
+                this.txtFiles = Array.from(files).filter(file => 
+	    file.type === 'text/plain' || 
+	    file.type === '' || 
+	    file.name.toLowerCase().endsWith('.txt')
+	);
                 this.displayTxtFiles();
             }
 
