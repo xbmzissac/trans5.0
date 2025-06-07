@@ -411,6 +411,7 @@
                 <select id="translateEngine">
                     <option value="claude">Claude</option>
                     <option value="gpt">GPT</option>
+	    <option value="both">Claude + GPT 双引擎</option>
                 </select>
             </div>
         </div>
@@ -603,15 +604,24 @@
                     return;
                 }
 
-                const engine = document.getElementById('translateEngine').value;
-                const apiKey = engine === 'claude' ? 
-                    document.getElementById('claudeApiKey').value : 
-                    document.getElementById('gptApiKey').value;
+                // 替换原来的API密钥验证部分
+	const engine = document.getElementById('translateEngine').value;
+	let apiKeyValid = false;
 
-                if (!apiKey) {
-                    this.showStatus('请输入API密钥', 'error');
-                    return;
-                }
+	if (engine === 'claude') {
+    	    apiKeyValid = document.getElementById('claudeApiKey').value.trim() !== '';
+	} else if (engine === 'gpt') {
+    	    apiKeyValid = document.getElementById('gptApiKey').value.trim() !== '';
+	} else if (engine === 'both') {
+	    const claudeKey = document.getElementById('claudeApiKey').value.trim();
+	    const gptKey = document.getElementById('gptApiKey').value.trim();
+	    apiKeyValid = claudeKey !== '' && gptKey !== '';
+	}
+
+	if (!apiKeyValid) {
+	    this.showStatus('请输入相应的API密钥', 'error');
+	    return;
+	}
 
                 this.showProgress(true);
                 this.results = [];
@@ -647,23 +657,53 @@
             }
 
             async translateText(text, engine) {
-                // 首先尝试使用Excel对照表进行替换翻译
-                async translateText(text, engine) {
-    	// 使用API翻译
-   	let translatedText;
+	let translatedText;
+    
+    	// 根据引擎选择进行翻译
     	if (engine === 'claude') {
-        	    translatedText = await this.translateWithClaude(text);
-   	 } else {
-        	    translatedText = await this.translateWithGPT(text);
-   	 }
+	        translatedText = await this.translateWithClaude(text);
+	} else if (engine === 'gpt') {
+	        translatedText = await this.translateWithGPT(text);
+	} else if (engine === 'both') {
+        	// 双API同时翻译
+	        const [claudeResult, gptResult] = await Promise.allSettled([
+	            this.translateWithClaude(text),
+	            this.translateWithGPT(text)
+	        ]);
+        
+	        // 处理翻译结果
+	        let claudeTranslation = '';
+	        let gptTranslation = '';
+        
+	        if (claudeResult.status === 'fulfilled') {
+	            claudeTranslation = claudeResult.value;
+	        } else {
+	            claudeTranslation = `Claude翻译失败: ${claudeResult.reason.message}`;
+	        }
+        
+	        if (gptResult.status === 'fulfilled') {
+	            gptTranslation = gptResult.value;
+	        } else {
+	            gptTranslation = `GPT翻译失败: ${gptResult.reason.message}`;
+	        }
+        
+	        // 合并两个翻译结果
+	        translatedText = `=== Claude翻译 ===\n${claudeTranslation}\n\n=== GPT翻译 ===\n${gptTranslation}`;
+	    } else {
+	        throw new Error('未知的翻译引擎');
+	    }
     
-    	// 然后在API翻译结果基础上应用Excel对照表进行后处理
-    	if (Object.keys(this.translationDict).length > 0) {
-        	     translatedText = this.applyDictionaryTranslation(translatedText);
-   	 }
+	    // 然后在API翻译结果基础上应用Excel对照表进行后处理
+	    if (Object.keys(this.translationDict).length > 0) {
+	        translatedText = this.applyDictionaryTranslation(translatedText);
+	    }
     
-    	return translatedText;
-	}
+	    return translatedText;
+            }
+
+// 同时需要更新HTML中的翻译引擎选择器
+// 在HTML的select选项中添加：
+// <option value="both">Claude + GPT 双引擎</option>
 
                 // 否则使用API翻译
                 if (engine === 'claude') {
