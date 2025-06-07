@@ -952,10 +952,10 @@
 	if (result.claude) {
 	   try {
 	        await navigator.clipboard.writeText(result.claude);
-	        this.showStatus(已复制 ${result.filename} 的Claude译文, 'success');
+	        this.showStatus(`已复制 ${result.filename} 的Claude译文`, 'success');
 	    } catch (error) {
 	        this.fallbackCopy(result.claude);
-	        this.showStatus(已复制 ${result.filename} 的Claude译文, 'success');
+	        this.showStatus(`已复制 ${result.filename} 的Claude译文`, 'success');
 	    }
 	}
             }
@@ -964,10 +964,10 @@
 	if (result.gpt) {
 	    try {
 	        await navigator.clipboard.writeText(result.gpt);
-	        this.showStatus(已复制 ${result.filename} 的GPT译文, 'success');
+	        this.showStatus(`已复制 ${result.filename} 的GPT译文`, 'success');
 	    } catch (error) {
 	        this.fallbackCopy(result.gpt);
-	        this.showStatus(已复制 ${result.filename} 的GPT译文, 'success');
+	        this.showStatus(`已复制 ${result.filename} 的GPT译文`, 'success');
 	    }
 	}
             }
@@ -1011,11 +1011,11 @@
 	        });
 	        // 下载Claude结果
 	        const claudeContent = await claudeZip.generateAsync({ type: 'blob' });
-	        this.downloadZip(claudeContent, Claude_Results_${new Date().toISOString().slice(0, 10)}.zip);
+	        this.downloadZip(claudeContent, `Claude_Results_${new Date().toISOString().slice(0, 10)}.zip`);
 
 	        // 下载GPT结果
 	        const gptContent = await gptZip.generateAsync({ type: 'blob' });
-	        this.downloadZip(gptContent, GPT_Results_${new Date().toISOString().slice(0, 10)}.zip);
+	        this.downloadZip(gptContent, `GPT_Results_${new Date().toISOString().slice(0, 10)}.zip`);
 
 	        this.showStatus('Claude和GPT结果已分别下载', 'success');
 	    } else {
@@ -1026,7 +1026,7 @@
 	            zip.file(filename, result.translated);
 	        });
 	        const content = await zip.generateAsync({ type: 'blob' });
-	        this.downloadZip(content, translation_results_${new Date().toISOString().slice(0, 10)}.zip);
+	        this.downloadZip(content, `translation_results_${new Date().toISOString().slice(0, 10)}.zip`);
 	        this.showStatus('翻译结果下载完成', 'success');
 	    }
 	}
