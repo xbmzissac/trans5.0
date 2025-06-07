@@ -756,7 +756,7 @@
                     body: JSON.stringify({
                         type: 'claude',
                         payload: {
-                            model="claude-sonnet-4-20250514",
+                            model: "claude-sonnet-4-20250514",
                             max_tokens: 1024,
                             messages: [
                                 {role: 'user', content: this.buildTranslationPrompt(text)}
@@ -785,7 +785,7 @@
                     body: JSON.stringify({
                         type: 'gpt',
                         payload: {
-                            model="gpt-4-turbo",
+                            model: "gpt-4-turbo",
                             messages: [
                                 {role: 'user', content: this.buildTranslationPrompt(text) }
                         ]
