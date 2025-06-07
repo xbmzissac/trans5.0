@@ -844,8 +844,7 @@
                 });
 
                 const content = await zip.generateAsync({ type: 'blob' });
-                const url = URL.createObjectURL(content);
-	const url = URL.createObjectURL(content);
+const url = URL.createObjectURL(content);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `translation_results_${new Date().toISOString().slice(0, 10)}.zip`;
@@ -863,6 +862,24 @@
 
         // 页面加载完成后的初始化
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成，初始化翻译器');
+            
+            // 测试按钮点击
+            const translateBtn = document.getElementById('startTranslation');
+            const txtFilesInput = document.getElementById('txtFiles');
+            
+            if (!translateBtn) {
+                console.error('找不到翻译按钮');
+            } else {
+                console.log('翻译按钮找到');
+            }
+            
+            if (!txtFilesInput) {
+                console.error('找不到文件输入框');
+            } else {
+                console.log('文件输入框找到');
+            }
+            
             // 从localStorage加载保存的API配置
             const savedClaudeKey = localStorage.getItem('claudeApiKey');
             const savedGptKey = localStorage.getItem('gptApiKey');
@@ -880,15 +897,20 @@
 
             // 保存API配置到localStorage
             ['claudeApiKey', 'gptApiKey', 'gptBaseUrl'].forEach(id => {
-                document.getElementById(id).addEventListener('blur', function() {
-                    localStorage.setItem(id, this.value);
-                });
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('blur', function() {
+                        localStorage.setItem(id, this.value);
+                        console.log('保存配置:', id, this.value ? '***已设置***' : '未设置');
+                    });
+                }
             });
 
             // 添加快捷键支持
             document.addEventListener('keydown', function(e) {
                 // Ctrl+Enter 开始翻译
                 if (e.ctrlKey && e.key === 'Enter') {
+                    console.log('快捷键触发翻译');
                     document.getElementById('startTranslation').click();
                 }
                 // Ctrl+D 下载结果
