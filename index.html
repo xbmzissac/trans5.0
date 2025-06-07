@@ -705,15 +705,6 @@
 	    return translatedText;
             }
 
-
-                // 否则使用API翻译
-                if (engine === 'claude') {
-                    return await this.translateWithClaude(text);
-                } else {
-                    return await this.translateWithGPT(text);
-                }
-            }
-
             applyDictionaryTranslation(text) {
                 if (Object.keys(this.translationDict).length === 0) {
                     return text;
